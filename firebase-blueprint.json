@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Director or creator account profile synced per authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID owning this profile."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Creator full name."
+        },
+        "nickname": {
+          "type": "string",
+          "description": "Creator nickname or handle."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "fullName", "nickname", "createdAt", "updatedAt"]
+    },
+    "VideoProject": {
+      "title": "VideoProject",
+      "description": "A video production project containing ordered shots and production status.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID owning this project."
+        },
+        "title": {
+          "type": "string",
+          "description": "Project title (e.g., YouTube Ep. 1, Short Film)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["in_progress", "completed"],
+          "description": "Overall production status."
+        },
+        "createdAtMillis": {
+          "type": "integer",
+          "description": "Client creation timestamp in epoch milliseconds."
+        },
+        "updatedAtMillis": {
+          "type": "integer",
+          "description": "Client modification timestamp in epoch milliseconds."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "status", "createdAtMillis", "updatedAtMillis", "createdAt", "updatedAt"]
+    },
+    "ShotItem": {
+      "title": "ShotItem",
+      "description": "An individual shot entry inside a video production project.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID owning this shot."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Parent VideoProject document ID."
+        },
+        "shotNumber": {
+          "type": "string",
+          "description": "Shot label or number (e.g., Scene 1 - Shot 1)."
+        },
+        "sortOrder": {
+          "type": "integer",
+          "description": "Zero-based display and filming sequence order."
+        },
+        "shotType": {
+          "type": "string",
+          "description": "Cinematography preset or custom shot type name."
+        },
+        "dialogueScript": {
+          "type": "string",
+          "description": "Spoken dialogue or voiceover script."
+        },
+        "visualDescription": {
+          "type": "string",
+          "description": "Camera movement, framing, and visual action description."
+        },
+        "vfxNotes": {
+          "type": "string",
+          "description": "Transitions, overlays, color grading, or CGI notes."
+        },
+        "sfxMusicNotes": {
+          "type": "string",
+          "description": "Background music cues, ambient sounds, and sound effects."
+        },
+        "directorsNotes": {
+          "type": "string",
+          "description": "Lighting, props, and location reminders."
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "description": "Estimated shot duration in seconds."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Whether this shot has been filmed on set."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "projectId",
+        "shotNumber",
+        "sortOrder",
+        "shotType",
+        "dialogueScript",
+        "visualDescription",
+        "vfxNotes",
+        "sfxMusicNotes",
+        "directorsNotes",
+        "durationSeconds",
+        "isCompleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authenticated user's creator profile."
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/VideoProject" },
+      "description": "Video production projects owned by the user."
+    },
+    "/users/{userId}/projects/{projectId}/shots/{shotId}": {
+      "schema": { "$ref": "#/entities/ShotItem" },
+      "description": "Sequential shots belonging to a user's video production project."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "ShotDesk",
+  "description": "Offline-first video production planner, shot list builder, and on-set shooting tracker for creators and filmmakers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

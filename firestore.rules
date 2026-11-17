@@ -1,0 +1,157 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 80 &&
+             data.nickname is string && data.nickname.size() >= 1 && data.nickname.size() <= 40 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidProject(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.status is string && (data.status == 'in_progress' || data.status == 'completed') &&
+             data.createdAtMillis is int && data.createdAtMillis >= 0 &&
+             data.updatedAtMillis is int && data.updatedAtMillis >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidShot(data, projectId) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.projectId is string && data.projectId == projectId &&
+             data.shotNumber is string && data.shotNumber.size() >= 1 && data.shotNumber.size() <= 40 &&
+             data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+             data.shotType is string && data.shotType.size() >= 1 && data.shotType.size() <= 60 &&
+             data.dialogueScript is string && data.dialogueScript.size() <= 5000 &&
+             data.visualDescription is string && data.visualDescription.size() <= 3000 &&
+             data.vfxNotes is string && data.vfxNotes.size() <= 2000 &&
+             data.sfxMusicNotes is string && data.sfxMusicNotes.size() <= 2000 &&
+             data.directorsNotes is string && data.directorsNotes.size() <= 2000 &&
+             data.durationSeconds is int && data.durationSeconds >= 0 && data.durationSeconds <= 86400 &&
+             data.isCompleted is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'fullName', 'nickname', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'fullName', 'nickname', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'nickname', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /projects/{projectId} {
+        allow get: if isOwner(userId) && isValidId(projectId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(projectId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'status', 'createdAtMillis', 'updatedAtMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'status', 'createdAtMillis', 'updatedAtMillis', 'createdAt', 'updatedAt']) &&
+                         isValidProject(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(projectId) &&
+                         isValidProject(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().createdAtMillis == existing().createdAtMillis &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'status', 'updatedAtMillis', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAtMillis', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(projectId);
+
+        match /shots/{shotId} {
+          allow get: if isOwner(userId) && isValidId(projectId) && isValidId(shotId);
+          allow list: if isOwner(userId) && isValidId(projectId);
+
+          allow create: if isOwner(userId) &&
+                           isValidId(projectId) &&
+                           isValidId(shotId) &&
+                           incoming().keys().hasAll([
+                             'userId', 'projectId', 'shotNumber', 'sortOrder', 'shotType',
+                             'dialogueScript', 'visualDescription', 'vfxNotes',
+                             'sfxMusicNotes', 'directorsNotes', 'durationSeconds',
+                             'isCompleted', 'createdAt', 'updatedAt'
+                           ]) &&
+                           incoming().keys().hasOnly([
+                             'userId', 'projectId', 'shotNumber', 'sortOrder', 'shotType',
+                             'dialogueScript', 'visualDescription', 'vfxNotes',
+                             'sfxMusicNotes', 'directorsNotes', 'durationSeconds',
+                             'isCompleted', 'createdAt', 'updatedAt'
+                           ]) &&
+                           isValidShot(incoming(), projectId) &&
+                           (
+                             exists(/databases/$(database)/documents/users/$(userId)/projects/$(projectId)) ||
+                             existsAfter(/databases/$(database)/documents/users/$(userId)/projects/$(projectId))
+                           );
+
+          allow update: if isOwner(userId) &&
+                           isValidId(projectId) &&
+                           isValidId(shotId) &&
+                           isValidShot(incoming(), projectId) &&
+                           incoming().userId == existing().userId &&
+                           incoming().projectId == existing().projectId &&
+                           incoming().createdAt == existing().createdAt &&
+                           (
+                             incoming().diff(existing()).affectedKeys().hasOnly([
+                               'shotNumber', 'sortOrder', 'shotType', 'dialogueScript',
+                               'visualDescription', 'vfxNotes', 'sfxMusicNotes',
+                               'directorsNotes', 'durationSeconds', 'isCompleted', 'updatedAt'
+                             ]) ||
+                             incoming().diff(existing()).affectedKeys().hasOnly(['isCompleted', 'updatedAt']) ||
+                             incoming().diff(existing()).affectedKeys().hasOnly(['sortOrder', 'shotNumber', 'updatedAt'])
+                           );
+
+          allow delete: if isOwner(userId) && isValidId(projectId) && isValidId(shotId);
+        }
+      }
+    }
+  }
+}
